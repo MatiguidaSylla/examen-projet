@@ -3,16 +3,15 @@ provider "aws" {
   access_key = var.access_key
   secret_key = var.secret_key
 }
-
-# Récupère automatiquement le VPC par défaut
+# Récupération du VPC par défaut
 data "aws_vpc" "default" {
   default = true
 }
 
-# Récupère l'AMI Ubuntu la plus récente
+# AMI Ubuntu 22.04 officielle
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"] # Canonical (Ubuntu)
+  owners      = ["099720109477"]
 
   filter {
     name   = "name"
@@ -30,32 +29,29 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# Groupe de sécurité avec accès SSH, Grafana, Prometheus
+# Groupe de sécurité (SSH, Prometheus, Grafana)
 resource "aws_security_group" "monitoring_sg" {
   name        = "monitoring-sg"
   description = "Allow SSH, Grafana and Prometheus"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    description = "SSH"
     from_port   = 22
     to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # 
-  }
-
-  ingress {
-    description = "Grafana"
-    from_port   = 3000
-    to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    description = "Prometheus"
     from_port   = 9090
     to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -74,17 +70,25 @@ resource "aws_security_group" "monitoring_sg" {
 
 # Instance EC2
 resource "aws_instance" "monitoring_server" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t2.micro"
-  key_name               = var.key_name
-  vpc_security_group_ids = [aws_security_group.monitoring_sg.id]
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = "t2.micro"
+  key_name                    = var.key_name
+  vpc_security_group_ids      = [aws_security_group.monitoring_sg.id]
 
   tags = {
     Name = "monitoring-server"
   }
 
-  # Génère le fichier hosts pour Ansible automatiquement
+  # Génère automatiquement le fichier d’inventaire Ansible
   provisioner "local-exec" {
-    command = "echo '[monitoring]\n${self.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/${var.key_file}.pem' > ../ansible/hosts"
+    command = <<EOT
+      echo '[monitoring]' > ../ansible/hosts
+      echo '${self.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/${var.key_file}.pem' >> ../ansible/hosts
+    EOT
   }
+}
+
+# Output pour récupérer l’IP publique
+output "instance_ip" {
+  value = aws_instance.monitoring_server.public_ip
 }
