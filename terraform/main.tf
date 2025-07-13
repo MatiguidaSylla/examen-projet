@@ -3,12 +3,13 @@ provider "aws" {
   access_key = var.access_key
   secret_key = var.secret_key
 }
-# Récupération du VPC par défaut
+
+# VPC par défaut
 data "aws_vpc" "default" {
   default = true
 }
 
-# AMI Ubuntu 22.04 officielle
+# AMI Ubuntu 22.04 (Canonical)
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
@@ -29,13 +30,14 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# Groupe de sécurité (SSH, Prometheus, Grafana)
+# Groupe de sécurité pour SSH, Grafana, Prometheus
 resource "aws_security_group" "monitoring_sg" {
   name        = "monitoring-sg"
   description = "Allow SSH, Grafana and Prometheus"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -43,6 +45,7 @@ resource "aws_security_group" "monitoring_sg" {
   }
 
   ingress {
+    description = "Prometheus"
     from_port   = 9090
     to_port     = 9090
     protocol    = "tcp"
@@ -50,6 +53,7 @@ resource "aws_security_group" "monitoring_sg" {
   }
 
   ingress {
+    description = "Grafana"
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
@@ -70,20 +74,12 @@ resource "aws_security_group" "monitoring_sg" {
 
 # Instance EC2
 resource "aws_instance" "monitoring_server" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "t2.micro"
-  key_name                    = var.key_name
-  vpc_security_group_ids      = [aws_security_group.monitoring_sg.id]
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t2.micro"
+  key_name               = var.key_name                 # 👈 correspond à la clé existante sur AWS
+  vpc_security_group_ids = [aws_security_group.monitoring_sg.id]
 
   tags = {
     Name = "monitoring-server"
-  }
-
-  # Génère automatiquement le fichier d’inventaire Ansible
-  provisioner "local-exec" {
-    command = <<EOT
-      echo '[monitoring]' > ../ansible/hosts
-      echo '${self.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/${var.key_file}.pem' >> ../ansible/hosts
-    EOT
   }
 }
