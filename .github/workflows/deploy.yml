@@ -39,14 +39,35 @@ jobs:
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
 
-    - name: Test SSH connection
+    - name: Get EC2 Public IP
+      id: get_ip
       run: |
-        # Remplace l'IP avec celle de l'instance EC2
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@13.39.49.87 echo "SSH OK"
+        INSTANCE_ID=$(aws ec2 describe-instances \
+          --filters "Name=tag:Name,Values=monitoring-server" \
+          --query "Reservations[*].Instances[*].InstanceId" \
+          --output text)
+
+        PUBLIC_IP=$(aws ec2 describe-instances \
+          --instance-ids $INSTANCE_ID \
+          --query "Reservations[*].Instances[*].PublicIpAddress" \
+          --output text)
+
+        echo "EC2 public IP is: $PUBLIC_IP"
+        echo "$PUBLIC_IP" > ip.txt
+        echo "::set-output name=public_ip::$PUBLIC_IP"
+
+    - name: Write Ansible Inventory
+      run: |
+        echo "[monitoring]" > ansible/hosts
+        echo "$(cat ip.txt) ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa" >> ansible/hosts
 
     - name: Install Ansible
       run: |
         sudo apt-get update && sudo apt-get install -y ansible
+
+    - name: Test SSH connection
+      run: |
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@$(cat ip.txt) echo "SSH OK"
 
     - name: Run Ansible Playbook
       run: |
