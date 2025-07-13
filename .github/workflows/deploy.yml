@@ -1,4 +1,4 @@
-name: Deploy Infrastructure and Monitoring
+name: Deploy Infrastructure and Monitoring AWS
 
 on:
   push:
