@@ -1,15 +1,14 @@
 variable "region" {
-  default = "eu-west-3"
+  description = "AWS region"
+  default     = "eu-west-3" # Paris par exemple
 }
 
-variable "ami_id" {
-  default = "ami-09d56f8956ab235b3"
+variable "access_key" {
+  description = "AWS Access Key"
+  type        = string
 }
 
-variable "key_name" {
-  default = "projet_exam"
-}
-
-variable "key_file" {
-  default = "projet_exam"
+variable "secret_key" {
+  description = "AWS Secret Key"
+  type        = string
 }
