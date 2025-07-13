@@ -12,6 +12,7 @@ jobs:
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: eu-west-3  # ✅ Région définie pour AWS CLI
 
     steps:
     - name: Checkout repo
@@ -45,12 +46,14 @@ jobs:
         INSTANCE_ID=$(aws ec2 describe-instances \
           --filters "Name=tag:Name,Values=monitoring-server" \
           --query "Reservations[*].Instances[*].InstanceId" \
-          --output text)
+          --output text \
+          --region $AWS_DEFAULT_REGION)
 
         PUBLIC_IP=$(aws ec2 describe-instances \
           --instance-ids $INSTANCE_ID \
           --query "Reservations[*].Instances[*].PublicIpAddress" \
-          --output text)
+          --output text \
+          --region $AWS_DEFAULT_REGION)
 
         echo "EC2 public IP is: $PUBLIC_IP"
         echo "$PUBLIC_IP" > ip.txt
