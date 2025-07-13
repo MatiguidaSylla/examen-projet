@@ -57,6 +57,23 @@
         src: prometheus.yml
         dest: /home/ubuntu/prometheus.yml
 
+    # ✅ Correction : création des dossiers requis
+    - name: Create Grafana provisioning directory
+      file:
+        path: /home/ubuntu/grafana/provisioning
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Create Grafana dashboards directory
+      file:
+        path: /home/ubuntu/grafana/dashboards
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
     - name: Copy Grafana provisioning config
       copy:
         src: grafana/provisioning/dashboards.yaml
