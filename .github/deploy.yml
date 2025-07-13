@@ -41,16 +41,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Get EC2 IP from Terraform output
+      - name: Get EC2 IP from Terraform
         working-directory: ./terraform
         run: |
           terraform output -raw instance_ip > ../ansible/host_ip.txt
 
-      - name: Setup SSH Key
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_rsa
 
       - name: Create Ansible inventory
         run: |
@@ -61,6 +63,6 @@ jobs:
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
 
-      - name: Run Ansible playbook
+      - name: Run Ansible Playbook
         working-directory: ./ansible
         run: ansible-playbook -i hosts playbook.yml
