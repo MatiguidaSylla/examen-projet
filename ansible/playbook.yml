@@ -1,0 +1,76 @@
+---
+- name: Setup Docker, Prometheus and Grafana
+  hosts: monitoring
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Docker and Docker Compose
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+        state: present
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Enable and start Docker
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create docker-compose.yml
+      copy:
+        dest: /home/ubuntu/docker-compose.yml
+        content: |
+          version: '3'
+          services:
+            prometheus:
+              image: prom/prometheus
+              ports:
+                - "9090:9090"
+            grafana:
+              image: grafana/grafana
+              ports:
+                - "3000:3000"
+
+    - name: Run docker-compose up
+      command: docker-compose up -d
+      args:
+        chdir: /home/ubuntu
+
+    - name: Créer dossiers Grafana
+      file:
+        path: "/home/ubuntu/monitoring/{{ item }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+      loop:
+        - grafana
+        - grafana/dashboards
+        - grafana/provisioning
+
+    - name: Copier le dashboard Grafana JSON
+      copy:
+        src: files/grafana/dashboards/node_exporter.json
+        dest: /home/ubuntu/monitoring/grafana/dashboards/node_exporter.json
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Copier la config provisioning YAML
+      copy:
+        src: files/grafana/provisioning/dashboards.yaml
+        dest: /home/ubuntu/monitoring/grafana/provisioning/dashboards.yaml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
