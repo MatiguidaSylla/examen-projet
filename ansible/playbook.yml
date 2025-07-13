@@ -2,6 +2,11 @@
 - name: Setup Docker, Prometheus and Grafana
   hosts: monitoring
   become: yes
+
+  vars:
+    grafana_port: 3000
+    prometheus_port: 9090
+
   tasks:
     - name: Update apt cache
       apt:
@@ -26,7 +31,7 @@
         state: started
         enabled: true
 
-    - name: Create docker-compose.yml
+    - name: Create Docker Compose file
       copy:
         dest: /home/ubuntu/docker-compose.yml
         content: |
@@ -36,41 +41,51 @@
               image: prom/prometheus
               ports:
                 - "9090:9090"
+              volumes:
+                - ./prometheus.yml:/etc/prometheus/prometheus.yml
             grafana:
               image: grafana/grafana
               ports:
                 - "3000:3000"
+              volumes:
+                - ./grafana:/etc/grafana/provisioning
+              environment:
+                - GF_SECURITY_ADMIN_PASSWORD=admin
 
-    - name: Run docker-compose up
+    - name: Copy prometheus.yml config
+      copy:
+        src: prometheus.yml
+        dest: /home/ubuntu/prometheus.yml
+
+    - name: Copy Grafana provisioning config
+      copy:
+        src: grafana/provisioning/dashboards.yaml
+        dest: /home/ubuntu/grafana/provisioning/dashboards.yaml
+
+    - name: Copy Grafana dashboard JSON
+      copy:
+        src: grafana/dashboards/node_exporter.json
+        dest: /home/ubuntu/grafana/dashboards/node_exporter.json
+
+    - name: Run docker-compose
       command: docker-compose up -d
       args:
         chdir: /home/ubuntu
 
-    - name: Créer dossiers Grafana
-      file:
-        path: "/home/ubuntu/monitoring/{{ item }}"
-        state: directory
-        owner: ubuntu
-        group: ubuntu
-        mode: '0755'
-      loop:
-        - grafana
-        - grafana/dashboards
-        - grafana/provisioning
+    - name: Wait for Grafana to be available
+      uri:
+        url: "http://localhost:{{ grafana_port }}"
+        return_content: yes
+      register: grafana_status
+      retries: 10
+      delay: 5
+      until: grafana_status.status == 200
 
-    - name: Copier le dashboard Grafana JSON
-      copy:
-        src: files/grafana/dashboards/node_exporter.json
-        dest: /home/ubuntu/monitoring/grafana/dashboards/node_exporter.json
-        owner: ubuntu
-        group: ubuntu
-        mode: '0644'
-
-    - name: Copier la config provisioning YAML
-      copy:
-        src: files/grafana/provisioning/dashboards.yaml
-        dest: /home/ubuntu/monitoring/grafana/provisioning/dashboards.yaml
-        owner: ubuntu
-        group: ubuntu
-        mode: '0644'
-
+    - name: Wait for Prometheus to be available
+      uri:
+        url: "http://localhost:{{ prometheus_port }}"
+        return_content: yes
+      register: prometheus_status
+      retries: 10
+      delay: 5
+      until: prometheus_status.status == 200
