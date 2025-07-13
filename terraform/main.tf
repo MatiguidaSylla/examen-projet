@@ -9,7 +9,20 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# AMI Ubuntu 22.04 (Canonical)
+# Subnet par défaut dans le VPC
+data "aws_subnet" "default" {
+  filter {
+    name   = "default-for-az"
+    values = ["true"]
+  }
+
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+# AMI Ubuntu 22.04 LTS
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
@@ -33,7 +46,7 @@ data "aws_ami" "ubuntu" {
 # Groupe de sécurité pour SSH, Grafana, Prometheus
 resource "aws_security_group" "monitoring_sg" {
   name        = "monitoring-sg"
-  description = "Allow SSH, Grafana and Prometheus"
+  description = "Allow SSH, Grafana, and Prometheus"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
@@ -72,12 +85,14 @@ resource "aws_security_group" "monitoring_sg" {
   }
 }
 
-# Instance EC2
+# Instance EC2 pour le monitoring
 resource "aws_instance" "monitoring_server" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t2.micro"
-  key_name               = var.key_name                 # 👈 correspond à la clé existante sur AWS
-  vpc_security_group_ids = [aws_security_group.monitoring_sg.id]
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = "t2.micro"
+  key_name                    = var.key_name
+  subnet_id                   = data.aws_subnet.default.id
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.monitoring_sg.id]
 
   tags = {
     Name = "monitoring-server"
