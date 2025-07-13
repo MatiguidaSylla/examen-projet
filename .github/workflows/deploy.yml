@@ -30,11 +30,19 @@ jobs:
       working-directory: ./terraform
       run: terraform apply -auto-approve
 
+    - name: Wait for EC2 to start
+      run: sleep 60
+
     - name: Add SSH Key
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
+
+    - name: Test SSH connection
+      run: |
+        # Remplace l'IP avec celle de l'instance EC2
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@13.39.49.87 echo "SSH OK"
 
     - name: Install Ansible
       run: |
