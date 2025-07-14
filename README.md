@@ -1,5 +1,5 @@
-# examen-projet
-# 📊 Projet de Monitoring Cloud avec Terraform, Ansible, Prometheus & Grafana
+# examen-projet-M2RSI Prof Massa
+# 📊 Projet Multicloud provider  Monitoring(Grafana,Prometheus) Automatisation  avec Terraform, Ansible.
 
 Ce projet met en place automatiquement une **infrastructure complète de monitoring** dans le cloud (AWS), permettant de :
 - Créer une instance EC2 Ubuntu via **Terraform**
